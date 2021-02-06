@@ -1,0 +1,63 @@
+---
+- name: Deploying website updates
+  hosts: all
+  user: root
+
+  tasks:
+  - name: Put SELinux in permissive mode, logging actions that would be blocked.
+    ansible.posix.selinux:
+      policy: targeted
+      state: permissive
+
+  - name: Verify folder is present for blog content
+    file:
+      path: /data/shake
+      state: directory
+      owner: "deploy"
+      mode: '0755'
+
+  - name: Pull std repo updates
+    git:
+      repo: "https://github.com/jansendotsh/chalk.git"
+      dest: "/data/shake"
+      version: master
+      update: yes
+
+  - name: Create Gemfile.lock file
+    file:
+      path: /data/shake/Gemfile.lock
+      owner: deploy
+      group: deploy
+      mode: '0666'
+      state: touch
+
+  - name: Create compiled blog directory
+    file:
+      path: /data/shake/_site
+      owner: deploy
+      group: deploy
+      mode: '0755'
+      state: directory
+
+  - name: Generate Gemfile.lock
+    shell: docker run --rm --volume="/data/shake:/srv/jekyll:Z" -it jekyll/jekyll:3.8.6 bundle update
+
+  - name: Build blog
+    shell: docker run --rm --volume="/data/shake:/srv/jekyll:Z" -it jekyll/jekyll:3.8.6 jekyll build
+
+  - name: Allow Nginx to access files in /data/shake/_site
+    sefcontext:
+      target: '/data/shake/_site(/.*)?'
+      setype: httpd_sys_content_t
+      state: present
+
+  - name: Change default context
+    shell: chcon -Rt httpd_sys_content_t /data/shake/_site
+
+  - name: Apply new SELinux file context in /data/shake/_site
+    shell: restorecon  -R -v /data/shake/_site
+
+  - name: Enable SELinux
+    ansible.posix.selinux:
+      policy: targeted
+      state: enforcing
