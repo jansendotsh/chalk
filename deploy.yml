@@ -39,11 +39,19 @@
       mode: '0755'
       state: directory
 
-  - name: Generate Gemfile.lock
-    shell: docker run --rm --volume="/data/shake:/srv/jekyll:Z" -it jekyll/jekyll:3.8.6 bundle update
+  - name: Installing necessary build tools
+    dnf:
+      name: 
+        - npm
+        - rubygems
+        - ruby-devel
+      state: present
+
+  - name: Blog build environment
+    shell: bash /data/shake/bin/setup
 
   - name: Build blog
-    shell: docker run --rm --volume="/data/shake:/srv/jekyll:Z" -it jekyll/jekyll:3.8.6 jekyll build
+    shell: jekyll build
 
   - name: Allow Nginx to access files in /data/shake/_site
     sefcontext:
