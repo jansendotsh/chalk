@@ -45,13 +45,21 @@
         - npm
         - rubygems
         - ruby-devel
+        - openssl-devel
+        - redhat-rpm-config
+        - gcc
+        - gcc-c++
       state: present
 
   - name: Blog build environment
-    shell: bash /data/shake/bin/setup
+    shell: bin/setup
+    args:
+      chdir: /data/shake
 
   - name: Build blog
     shell: jekyll build
+    args:
+      chdir: /data/shake
 
   - name: Allow Nginx to access files in /data/shake/_site
     sefcontext:
